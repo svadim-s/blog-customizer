@@ -1,28 +1,40 @@
 import { useEffect } from 'react';
 
-type UseCloseForm = {
-	isFormOpen: boolean;
-	onCloseForm?: () => void;
-	rootRef: React.RefObject<HTMLDivElement>;
+type TUseClose = {
+	isOpen: boolean;
+	onClose: () => void;
+	rootRef: React.RefObject<HTMLElement>;
 };
 
-export const useCloseForm = ({
-	isFormOpen,
-	rootRef,
-	onCloseForm,
-}: UseCloseForm) => {
+export function useClose({ isOpen, onClose, rootRef }: TUseClose) {
 	useEffect(() => {
-		const handleClick = (event: MouseEvent) => {
+		if (!isOpen) return; // останавливаем действие эффекта, если закрыто
+
+		function handleClickOutside(event: MouseEvent) {
 			const { target } = event;
-			if (target instanceof Node && !rootRef.current?.contains(target)) {
-				isFormOpen && onCloseForm?.();
+			const isOutsideClick =
+				target instanceof Node && // проверяем, что это `DOM`-элемент
+				rootRef.current &&
+				!rootRef.current.contains(target); // проверяем, что кликнули на элемент, который находится не внутри нашего блока
+			if (isOutsideClick) {
+				onClose();
+			}
+		}
+
+		const handleEscape = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') {
+				onClose();
 			}
 		};
 
-		window.addEventListener('mousedown', handleClick);
+		document.addEventListener('keydown', handleEscape);
+		document.addEventListener('mousedown', handleClickOutside);
 
+		//  обязательно удаляем обработчики в `clean-up`- функции
 		return () => {
-			window.removeEventListener('mousedown', handleClick);
+			document.removeEventListener('keydown', handleEscape);
+			document.removeEventListener('mousedown', handleClickOutside);
 		};
-	}, [onCloseForm, isFormOpen]);
-};
+		// обязательно следим за `isOpen`, чтобы срабатывало только при открытии, а не при любой перерисовке компонента
+	}, [isOpen, onClose, rootRef]);
+}
